@@ -165,6 +165,17 @@ hl run avellaneda_mm -i VXX-USDYP --tick 15
 hl run claude_agent -i US3M-USDYP --tick 30
 ```
 
+### Claim Testnet USDyP
+
+To trade YEX markets on testnet, you need USDyP tokens. Claim them with:
+
+```bash
+curl --location 'https://api-temp.nunchi.trade/api/v1/yex/usdyp-claim' \
+  --header 'x-network: testnet' \
+  --header 'Content-Type: application/json' \
+  --data '{"userAddress":"<YOUR_WALLET_ADDRESS>"}'
+```
+
 ## LLM Agent (Multi-Model)
 
 The `claude_agent` strategy uses structured tool/function calling to make trading decisions. It auto-detects the provider from the model name:
