@@ -1,6 +1,6 @@
 # YEX Trading Agent CLI
 
-Autonomous trading agent for [Hyperliquid](https://hyperliquid.xyz) perps and [YEX](https://yex.trade) yield markets. Ships with 11 built-in strategies (including 4 powered by the production quoting engine), a Claude-powered LLM agent, and a full autonomous trading stack: Dynamic Stop Loss (DSL), Opportunity Scanner, Emerging Movers detector, and the WOLF multi-slot orchestrator.
+Autonomous trading agent for [Hyperliquid](https://hyperliquid.xyz) perps and [YEX](https://yex.trade) yield markets. Ships with 14 built-in strategies (market making, momentum, arbitrage, and LLM-powered), a full autonomous trading stack (DSL, Scanner, Movers, WOLF orchestrator), HOWL nightly performance review, builder fee revenue collection, and encrypted keystore wallet management.
 
 Works as a standalone CLI, a **Claude Code skill**, or an **OpenClaw AgentSkill**.
 
@@ -11,8 +11,11 @@ git clone https://github.com/Nunchi-trade/agent-cli.git
 cd agent-cli
 pip install -e .
 
-# Set your HL private key
+# Set your HL private key (or use encrypted keystore: hl wallet import)
 export HL_PRIVATE_KEY=0x...
+
+# Validate environment
+hl setup check
 
 # Mock test (no connection needed)
 hl run avellaneda_mm --mock --max-ticks 10
@@ -28,14 +31,18 @@ hl wolf run --mock --max-ticks 10
 
 ```
 cli/           CLI commands and trading engine
-  commands/    Subcommand modules (run, dsl, scanner, movers, wolf, house)
-  hl_adapter.py  Direct HL API adapter (live + mock)
-strategies/    Trading strategy implementations
+  commands/    Subcommand modules (run, dsl, scanner, movers, wolf, house, builder, howl, wallet, setup)
+  hl_adapter.py    Direct HL API adapter (live + mock)
+  builder_fee.py   Builder fee configuration (HL native BuilderInfo)
+  keystore.py      Encrypted keystore (geth-compatible Web3 Secret Storage)
+strategies/    14 trading strategy implementations
 modules/       Pure logic modules (zero I/O)
   trailing_stop.py   DSL trailing stop engine
   scanner_engine.py  Opportunity scanner engine
   movers_engine.py   Emerging movers detection engine
   wolf_engine.py     WOLF decision engine
+  howl_engine.py     HOWL performance review engine
+  howl_reporter.py   HOWL markdown report generator
   *_config.py        Configuration + presets
   *_state.py         State models + persistence
   *_guard.py         Guard layer (engine + persistence bridge)
@@ -45,7 +52,7 @@ skills/        Agent Skills packaging (SKILL.md + runners)
 sdk/           Strategy base class, loader, and model registry
 common/        Shared data models and crypto utilities
 parent/        HL API proxy, position tracking, risk management
-tests/         Test suite
+tests/         Test suite (264 tests)
 ```
 
 ## Commands
@@ -84,6 +91,24 @@ hl wolf presets                   # List WOLF presets
 # House — TEE Clearing House Agent
 hl house join <strategy> [--url URL]  # Join a running house enclave
 hl house status [--url URL]           # Show house scoreboard
+
+# Builder Fee — Revenue Collection
+hl builder status                     # Show builder fee config
+hl builder approve [--mainnet]        # Approve fee on your HL account
+
+# HOWL — Performance Review
+hl howl run [--since DATE]            # Run analysis, generate report
+hl howl report [--date DATE]          # View a report
+hl howl history [-n 10]              # Show report trend
+
+# Wallet — Encrypted Keystore
+hl wallet create                      # Create new wallet + keystore
+hl wallet import --key <hex>          # Import existing key
+hl wallet list                        # List saved keystores
+hl wallet export [--address 0x...]    # Decrypt and export key
+
+# Setup — Environment Validation
+hl setup check                        # Validate SDK, keys, builder
 ```
 
 ## Strategies
@@ -101,6 +126,9 @@ hl house status [--url URL]           # Show house scoreboard
 | `funding_arb` | Funding Arb | Cross-venue funding rate arbitrage — captures funding dislocations |
 | `regime_mm` | Regime MM | Vol-regime adaptive MM — switches behavior by volatility regime |
 | `liquidation_mm` | Liquidation MM | Liquidation flow MM — provides liquidity during cascade events |
+| `momentum_breakout` | Momentum | Enter on volume + price breakout above/below N-period range |
+| `grid_mm` | Grid MM | Fixed-interval grid levels above and below mid |
+| `basis_arb` | Basis Arb | Trades implied basis from funding rate (contango/backwardation) |
 
 ### Quoting Engine Strategies
 
@@ -379,6 +407,93 @@ hl house join simple_mm --url http://house:8080 --poll 5
 | GET | `/v1/positions/{agent_id}` | Agent's current positions |
 | GET | `/v1/scoreboard` | Leaderboard rankings |
 
+## Builder Fee — Revenue Collection
+
+Collect revenue on every trade via Hyperliquid's native builder fee system. The fee is attached to each order as `BuilderInfo` — no extra gas, no contract calls, no custodial risk.
+
+```bash
+# Configure (env vars or YAML)
+export BUILDER_ADDRESS=0xYourAddress
+export BUILDER_FEE_TENTHS_BPS=10  # 10 = 1 bps = 0.01%
+
+# Users must approve once
+hl builder approve
+
+# Check config
+hl builder status
+```
+
+Or in YAML config:
+
+```yaml
+builder:
+  builder_address: "0xYourAddress"
+  fee_rate_tenths_bps: 10
+```
+
+The fee flows through the entire order pipeline: `TradingEngine` → `OrderManager` → `DirectHLProxy.place_order()` → `exchange.order(..., builder=info)`. WOLF runner also passes builder info on every enter/exit.
+
+## HOWL — Hunt, Optimize, Win, Learn
+
+Nightly automated performance review. Reads `data/cli/trades.jsonl`, computes metrics, detects patterns, and generates actionable recommendations.
+
+```bash
+# Run analysis
+hl howl run --since 2026-03-01
+
+# View last report
+hl howl report
+
+# Track trends
+hl howl history -n 10
+```
+
+**Metrics computed:**
+
+| Metric | Description |
+|--------|-------------|
+| Win Rate | % of round trips with positive net PnL |
+| Gross/Net PF | Profit factor (wins / losses) |
+| FDR | Fee Drag Ratio — fees as % of gross wins |
+| Direction Split | Long vs short win rates and PnL |
+| Holding Periods | Bucketed by <5m, 5-15m, 15-60m, 1-4h, 4h+ |
+| Monster Dependency | % of net PnL from best single trade |
+| Max Consecutive Losses | Longest loss streak |
+| Strategy Breakdown | Per-strategy win rate, PnL, fees |
+
+**Recommendation engine (rule-based):**
+
+| Condition | Recommendation |
+|-----------|----------------|
+| FDR > 30% | Reduce trade frequency or increase edge |
+| Win rate < 40% | Tighten entry criteria |
+| Monster dependency > 60% | Diversify alpha sources |
+| 5+ consecutive losses | Add loss-streak circuit breaker |
+| Fees > gross PnL | CRITICAL: widen spreads or reduce frequency |
+
+## Wallet — Encrypted Keystore
+
+Replace raw `HL_PRIVATE_KEY` env var with encrypted keystore files. Uses `eth_account.Account.encrypt()/decrypt()` — geth-compatible Web3 Secret Storage with scrypt KDF.
+
+```bash
+# Create a new wallet
+hl wallet create
+
+# Import existing key
+hl wallet import
+
+# List keystores
+hl wallet list
+
+# Export (decrypt)
+hl wallet export --address 0x...
+```
+
+Keystores are saved to `~/.hl-agent/keystore/<address>.json`. The key priority order is:
+
+1. Encrypted keystore (with `HL_KEYSTORE_PASSWORD` env var)
+2. `HL_PRIVATE_KEY` env var
+
 ## Custom Strategies
 
 Create a Python file that subclasses `BaseStrategy`:
@@ -535,6 +650,10 @@ max_daily_drawdown_pct: 2.5
 
 mainnet: false
 dry_run: false
+
+builder:
+  builder_address: "0xYourAddress"
+  fee_rate_tenths_bps: 10
 ```
 
 ```bash
@@ -576,6 +695,11 @@ pytest tests/test_trailing_stop.py -v     # DSL tests
 pytest tests/test_scanner_engine.py -v    # Scanner tests
 pytest tests/test_movers_engine.py -v     # Movers tests
 pytest tests/test_wolf_engine.py -v       # WOLF tests
+pytest tests/test_engine_strategies.py -v # Engine strategies
+pytest tests/test_new_strategies.py -v    # Momentum, grid, basis
+pytest tests/test_builder_fee.py -v       # Builder fee
+pytest tests/test_howl_engine.py -v       # HOWL performance review
+pytest tests/test_keystore.py -v          # Encrypted keystore
 ```
 
 ## License
