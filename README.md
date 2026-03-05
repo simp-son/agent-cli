@@ -24,6 +24,12 @@
   <img src="https://img.shields.io/badge/MCP-enabled-8A2BE2" alt="MCP" />
 </p>
 
+<p align="center">
+  <a href="https://railway.com/template/TEMPLATE_ID?referralCode=nunchi">
+    <img src="https://railway.com/button.svg" alt="Deploy on Railway" height="36" />
+  </a>
+</p>
+
 ---
 
 Ship market-making, momentum, arbitrage, and LLM-powered strategies on [Hyperliquid](https://hyperliquid.xyz) perps and [YEX](https://yex.nunchi.trade) yield markets. Full autonomous stack: DSL trailing stops, opportunity scanner, emerging movers detector, WOLF orchestrator, HOWL performance review. Works as a standalone CLI, a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill, an [OpenClaw](https://agentskills.io) AgentSkill, or an MCP server.
@@ -332,6 +338,31 @@ hl mcp serve --transport sse      # SSE transport
 **13 tools exposed:** `account`, `status`, `trade`, `run_strategy`, `strategies`, `scanner_run`, `wolf_status`, `wolf_run`, `howl_run`, `setup_check`, `builder_status`, `wallet_list`, `wallet_auto`
 
 Fast tools (strategies, builder, wallet, setup) call Python directly — zero subprocess overhead.
+
+---
+
+## Deploy on Railway
+
+One-click deploy to run WOLF autonomously in the cloud. No local setup required.
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/TEMPLATE_ID?referralCode=nunchi)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `HL_PRIVATE_KEY` | Yes | — | Your Hyperliquid private key |
+| `HL_TESTNET` | No | `true` | `true` for testnet, `false` for mainnet |
+| `RUN_MODE` | No | `wolf` | `wolf`, `strategy`, or `mcp` |
+| `WOLF_PRESET` | No | `default` | `conservative`, `default`, or `aggressive` |
+| `WOLF_BUDGET` | No | — | Override budget in USD |
+| `STRATEGY` | No | — | Strategy name (if RUN_MODE=strategy) |
+| `INSTRUMENT` | No | `ETH-PERP` | Trading instrument |
+
+**Run modes:**
+- **wolf** (default) — WOLF multi-slot orchestrator with autonomous entry, exit, and DSL trailing stops
+- **strategy** — Single strategy (set `STRATEGY=engine_mm`, `avellaneda_mm`, etc.)
+- **mcp** — MCP server for AI agent integration (SSE transport)
+
+Persistent volume at `/data` stores WOLF state, HOWL reports, and scanner history across redeploys. Health check at `/health`, live status at `/status`.
 
 ---
 
