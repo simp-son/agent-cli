@@ -103,3 +103,27 @@ def get_keystore_key(address: Optional[str] = None, password: Optional[str] = No
         return load_keystore(address, password)
     except Exception:
         return None
+
+
+def get_keystore_key_for_address(address: str, password: Optional[str] = None) -> Optional[str]:
+    """Load private key for a specific wallet address.
+
+    Used by multi-wallet mode to get keys for per-strategy wallets.
+    Returns None if address not found or password unavailable.
+    """
+    import os
+
+    if not address:
+        return None
+
+    password = password or os.environ.get("HL_KEYSTORE_PASSWORD", "")
+    if not password:
+        password = _load_env_password()
+    if not password:
+        return None
+
+    addr = address.lower().replace("0x", "")
+    try:
+        return load_keystore(addr, password)
+    except Exception:
+        return None

@@ -88,6 +88,9 @@ class ApexConfig:
     # Order type optimization (ALO fee savings ~3 bps round-trip)
     entry_order_type: str = "Alo"  # "Alo" (maker rebate), "Gtc", or "Ioc"
 
+    # Multi-strategy wallets (opt-in: empty dict = single-wallet mode)
+    wallet_config: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
     # Instrument filters
     excluded_instruments: List[str] = field(default_factory=list)
 

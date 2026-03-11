@@ -399,6 +399,23 @@ class RiskManager:
                 self.state.rounds_in_safe_mode = 0
             self.state.reduce_only = False
 
+    # ── Per-Wallet Risk ──────────────────────────────────────────────
+
+    def check_wallet_daily_loss(self, wallet_id: str, wallet_pnl: float,
+                                wallet_limit: float) -> bool:
+        """Check if a specific wallet has breached its daily loss limit.
+
+        Returns True if the wallet should stop trading (loss >= limit).
+        Does NOT change the house-level gate — that's separate.
+        """
+        if wallet_limit <= 0:
+            return False
+        if wallet_pnl <= -wallet_limit:
+            log.warning("Wallet %s daily loss %.2f >= limit %.2f — blocking entries",
+                        wallet_id, abs(wallet_pnl), wallet_limit)
+            return True
+        return False
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "limits": self.limits.to_dict(),
