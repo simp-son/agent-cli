@@ -288,7 +288,7 @@ class HLProxy:
         _patch_spot_meta_indexing()
 
         base_url = constants.TESTNET_API_URL if self.testnet else constants.MAINNET_API_URL
-        self._info = Info(base_url, skip_ws=True)
+        self._info = Info(base_url, skip_ws=True, timeout=10)
 
         account = Account.from_key(self.private_key)
         self._address = account.address
@@ -331,8 +331,11 @@ class HLProxy:
                 spread_bps=round(spread, 2),
                 timestamp_ms=int(time.time() * 1000),
             )
+        except (ConnectionError, OSError, TimeoutError) as e:
+            log.error("HL snapshot network error for %s: %s", instrument, e)
+            return MarketSnapshot(instrument=instrument)
         except Exception as e:
-            log.error("Failed to get HL snapshot: %s", e)
+            log.error("HL snapshot unexpected error for %s: %s", instrument, e, exc_info=True)
             return MarketSnapshot(instrument=instrument)
 
     def place_orders_from_clearing(self, fills: List[Dict]) -> List[Dict]:
@@ -424,9 +427,12 @@ class HLProxy:
 
                 placed.append(f)
                 self.placed_orders.append(f)
-            except Exception as e:
-                log.error("HL order failed: %s %s %s @ %s — %s",
+            except (ConnectionError, OSError, TimeoutError) as e:
+                log.error("HL order network error: %s %s %s @ %s — %s",
                           f["side"], sz, f["instrument"], price, e)
+            except Exception as e:
+                log.critical("HL order unexpected failure: %s %s %s @ %s — %s",
+                             f["side"], sz, f["instrument"], price, e, exc_info=True)
 
         log.info("Placed %d/%d orders on HL", len(placed),
                  sum(1 for f in fills if Decimal(str(f.get("quantity_filled", "0"))) > ZERO))
@@ -466,6 +472,8 @@ class HLProxy:
                             timestamp_ms=ts,
                             fee=Decimal(str(uf.get("fee", "0"))),
                         ))
+            except (ConnectionError, OSError, TimeoutError) as e:
+                log.error("Failed to fetch HL fills (network): %s", e)
             except Exception as e:
-                log.error("Failed to fetch HL fills: %s", e)
+                log.error("Failed to fetch HL fills: %s", e, exc_info=True)
         return [f for f in self.fills if f.timestamp_ms >= since_ms]
