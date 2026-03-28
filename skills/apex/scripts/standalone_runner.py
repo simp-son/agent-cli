@@ -327,6 +327,16 @@ class ApexRunner:
                     if old != value:
                         setattr(self.config, key, value)
                         changed.append(f"{key}: {old} -> {value}")
+                elif hasattr(self.radar_guard.config, key):
+                    old = getattr(self.radar_guard.config, key)
+                    if old != value:
+                        setattr(self.radar_guard.config, key, value)
+                        self.radar_guard.engine = type(self.radar_guard.engine)(self.radar_guard.config)
+                        changed.append(f"radar.{key}: {old} -> {value}")
+            # Sync radar_score_threshold to RadarConfig.score_threshold
+            if "radar_score_threshold" in params:
+                self.radar_guard.config.score_threshold = params["radar_score_threshold"]
+                self.radar_guard.engine = type(self.radar_guard.engine)(self.radar_guard.config)
             if override.get("preset"):
                 self.state.preset = override["preset"]
             if changed:
@@ -590,17 +600,44 @@ class ApexRunner:
     def _run_radar(self) -> List[Dict[str, Any]]:
         """Run radar and return opportunity dicts for the engine."""
         try:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
             all_markets = self.hl.get_all_markets()
 
-            # Fetch BTC candles
-            btc_4h = self.hl.get_candles("BTC", "4h", 7 * 24 * 3600 * 1000)
-            btc_1h = self.hl.get_candles("BTC", "1h", 48 * 3600 * 1000)
+            # Pre-screen to find which assets need candle data
+            assets = self.radar_guard.engine._bulk_screen(all_markets)
+            top_assets = self.radar_guard.engine._select_top(assets)
+            asset_names = [a.name for a in top_assets]
+
+            rcfg = self.radar_guard.config
+            btc_4h, btc_1h = [], []
+            asset_candles = {}
+
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                futures = {}
+                futures[pool.submit(self.hl.get_candles, "BTC", "4h", rcfg.lookback_4h_ms)] = ("_btc", "4h")
+                futures[pool.submit(self.hl.get_candles, "BTC", "1h", rcfg.lookback_1h_ms)] = ("_btc", "1h")
+                for name in asset_names:
+                    for interval, lookback in [("4h", rcfg.lookback_4h_ms), ("1h", rcfg.lookback_1h_ms), ("15m", rcfg.lookback_15m_ms)]:
+                        futures[pool.submit(self.hl.get_candles, name, interval, lookback)] = (name, interval)
+
+                for future in as_completed(futures):
+                    key = futures[future]
+                    try:
+                        data = future.result()
+                        if key[0] == "_btc":
+                            if key[1] == "4h": btc_4h = data
+                            else: btc_1h = data
+                        else:
+                            asset_candles.setdefault(key[0], {})[key[1]] = data
+                    except Exception as e:
+                        log.warning("Failed to fetch candles for %s %s: %s", key[0], key[1], e)
 
             result = self.radar_guard.scan(
                 all_markets=all_markets,
                 btc_candles_4h=btc_4h,
                 btc_candles_1h=btc_1h,
-                asset_candles={},
+                asset_candles=asset_candles,
             )
 
             return [
