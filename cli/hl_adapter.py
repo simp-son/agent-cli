@@ -418,7 +418,13 @@ class DirectHLProxy:
                 return fill
             elif "resting" in status:
                 oid = status["resting"].get("oid", "") if isinstance(status["resting"], dict) else ""
-                log.info("Resting [%s]: %s %s %s @ %s (oid=%s)", tif, side, size, instrument, price, oid)
+                log.info("Resting [%s]: %s %s %s @ %s (oid=%s) — cancelling",
+                         tif, side, size, instrument, price, oid)
+                if oid:
+                    try:
+                        self._exchange.cancel(coin, int(oid))
+                    except Exception:
+                        log.warning("Failed to cancel resting order %s for %s", oid, instrument)
                 return None
             elif "error" in status:
                 log.info("No fill [%s]: %s %s %s @ %s -- %s", tif, side, size, instrument, price, status["error"])

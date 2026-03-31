@@ -383,9 +383,12 @@ class ApexRunner:
         return [merged_meta, merged_ctxs]
 
     def _get_all_mids(self) -> dict:
-        """Fetch mid prices including HIP-3 DEXs if allowed_instruments needs them."""
+        """Fetch mid prices including HIP-3 DEXs if any are needed."""
         mids = self.hl.get_all_mids()
-        for dex_id in get_hip3_dex_ids(self.config.allowed_instruments):
+        # Merge HIP-3 mids if allowed_instruments or active positions need them
+        active_instruments = [s.instrument for s in self.state.active_slots()]
+        all_instruments = list(self.config.allowed_instruments) + active_instruments
+        for dex_id in get_hip3_dex_ids(all_instruments):
             try:
                 mids.update(self.hl.get_dex_mids(dex_id))
             except Exception as e:
@@ -955,14 +958,17 @@ class ApexRunner:
                 builder=self.builder,
             )
 
-            exit_price = float(fill.price) if fill else mid
+            if not fill:
+                log.warning("Exit fill failed for slot %d (%s) — position still open on-chain",
+                            slot.slot_id, action.instrument)
+                return
+
+            exit_price = float(fill.price)
             pnl = 0.0
             try:
                 if slot.entry_price > 0 and exit_price > 0:
-                    if slot.direction == "long":
-                        pnl = (exit_price - slot.entry_price) / slot.entry_price * slot.margin_allocated * self.config.leverage
-                    else:
-                        pnl = (slot.entry_price - exit_price) / slot.entry_price * slot.margin_allocated * self.config.leverage
+                    direction_sign = 1.0 if slot.direction == "long" else -1.0
+                    pnl = (exit_price - slot.entry_price) * slot.entry_size * direction_sign
             except Exception as e:
                 log.warning("PnL calculation failed for slot %d: %s (closing with pnl=0)", slot.slot_id, e)
 
@@ -970,8 +976,8 @@ class ApexRunner:
             self._log_trade(
                 tick=self.state.tick_count, instrument=action.instrument,
                 side=side, price=float(exit_price),
-                quantity=float(slot.entry_size), fee=float(getattr(fill, "fee", 0)) if fill else 0,
-                meta=action.reason,
+                quantity=float(fill.quantity), fee=float(getattr(fill, "fee", 0)),
+                pnl=pnl, meta=action.reason,
             )
             log.info("EXITED slot %d: %s %s @ %.4f PnL=$%.2f (%s)",
                      slot.slot_id, slot.direction, action.instrument,
@@ -1078,7 +1084,7 @@ class ApexRunner:
 
     def _log_trade(self, tick: int, instrument: str, side: str,
                    price: float, quantity: float, fee: float = 0,
-                   meta: str = "") -> None:
+                   pnl: float = 0.0, meta: str = "") -> None:
         """Append a trade record to the JSONL log."""
         self.trade_log.append({
             "tick": tick,
@@ -1089,6 +1095,7 @@ class ApexRunner:
             "quantity": str(quantity),
             "timestamp_ms": int(time.time() * 1000),
             "fee": str(fee),
+            "pnl": str(pnl),
             "strategy": "apex",
             "meta": meta,
         })
