@@ -13,7 +13,7 @@ import time
 from decimal import Decimal
 from typing import Dict, List, Optional
 
-from common.models import instrument_to_coin
+from common.models import HIP3_DEXS, instrument_to_coin
 from parent.hl_proxy import HLFill, HLProxy, MockHLProxy
 
 log = logging.getLogger("hl_adapter")
@@ -168,6 +168,17 @@ class DirectHLProxy:
             log.error("Failed to get account state: %s", e)
             return {}
 
+        # Merge HIP-3 DEX positions (e.g. YEX) so watchdog/reconciliation sees them.
+        for dex_id in HIP3_DEXS:
+            try:
+                dex_state = self._info.post("/info", {
+                    "type": "clearinghouseState", "user": self._address, "dex": dex_id,
+                })
+                if dex_state and dex_state.get("assetPositions"):
+                    result["positions"].extend(dex_state["assetPositions"])
+            except Exception as e:
+                log.warning("Failed to fetch %s positions: %s", dex_id, e)
+
         # Fetch spot balances (separate endpoint).
         spot_balances = self._fetch_spot_balances()
         if spot_balances:
@@ -265,6 +276,16 @@ class DirectHLProxy:
                     name = asset.get("name", "")
                     if name:
                         self._sz_decimals_cache[name] = int(asset.get("szDecimals", 1))
+                # Include HIP-3 DEX assets
+                for dex_id in HIP3_DEXS:
+                    try:
+                        dex_meta = self._info.meta(dex=dex_id)
+                        for asset in dex_meta.get("universe", []):
+                            name = asset.get("name", "")
+                            if name:
+                                self._sz_decimals_cache[name] = int(asset.get("szDecimals", 1))
+                    except Exception:
+                        pass
             except Exception:
                 pass
         return self._sz_decimals_cache.get(coin, 1)

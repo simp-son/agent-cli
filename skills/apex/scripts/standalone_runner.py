@@ -26,7 +26,7 @@ except ImportError:
         pass
 
 from common.models import (
-    asset_matches_allowed, asset_to_coin, instrument_to_coin,
+    asset_matches_allowed, asset_to_coin, coin_to_instrument, instrument_to_coin,
     get_hip3_dex_ids, HIP3_DEXS,
 )
 from modules.guard_config import GuardConfig, PRESETS as GUARD_PRESETS
@@ -388,8 +388,8 @@ class ApexRunner:
         for dex_id in get_hip3_dex_ids(self.config.allowed_instruments):
             try:
                 mids.update(self.hl.get_dex_mids(dex_id))
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning("Failed to fetch %s mids: %s", dex_id, e)
         return mids
 
     def _persist_account_state(self):
@@ -769,7 +769,7 @@ class ApexRunner:
             for pos in positions:
                 p = pos.get("position", pos)
                 coin = p.get("coin", "")
-                if f"{coin}-PERP" == discrepancy.instrument:
+                if coin_to_instrument(coin) == discrepancy.instrument:
                     szi = float(p.get("szi", "0"))
                     entry_px = float(p.get("entryPx", "0"))
                     break

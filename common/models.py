@@ -47,6 +47,15 @@ def instrument_to_coin(instrument: str) -> str:
     return instrument
 
 
+def instrument_to_asset(instrument: str) -> str:
+    """Strip suffix to get bare asset name. VXX-USDYP -> VXX, ETH-PERP -> ETH."""
+    upper = instrument.upper()
+    for suffix in INSTRUMENT_SUFFIXES:
+        if upper.endswith(suffix):
+            return instrument[:-len(suffix)]
+    return instrument
+
+
 def coin_to_instrument(coin: str) -> str:
     for suffix, prefix in HL_COIN_PREFIXES.items():
         if coin.startswith(prefix):

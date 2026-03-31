@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from common.models import asset_matches_allowed, asset_to_instrument
+from common.models import asset_matches_allowed, asset_to_instrument, instrument_to_asset
 from modules.apex_config import ApexConfig
 from modules.apex_state import ApexSlot, ApexState
 
@@ -40,7 +40,7 @@ class ApexEngine:
         if instrument in cfg.excluded_instruments:
             return False
         if cfg.allowed_instruments:
-            asset = instrument.split("-")[0]
+            asset = instrument_to_asset(instrument)
             if not asset_matches_allowed(asset, cfg.allowed_instruments):
                 return False
         return True
@@ -145,7 +145,7 @@ class ApexEngine:
         )
 
         # 3. Conviction collapse
-        coin = slot.instrument.replace("-PERP", "").replace("-USDYP", "")
+        coin = instrument_to_asset(slot.instrument)
         still_in_signals = any(
             s.get("asset") == coin for s in pulse_signals
         )
