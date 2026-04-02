@@ -243,11 +243,11 @@ const server = app.listen(PORT, async () => {
       // file may not exist yet
     }
 
-    // Step 1: Bootstrap (create dirs, sync workspace, generate configs)
-    await bootstrap();
-
-    // Step 2: Auto-onboard if credentials present
+    // Step 1: Auto-onboard first (it may overwrite config)
     await autoOnboard();
+
+    // Step 2: Bootstrap after onboard so our config is the final one
+    await bootstrap();
 
     // Step 3: Run doctor fix to clean up any invalid config keys
     try {
@@ -261,7 +261,21 @@ const server = app.listen(PORT, async () => {
       // best-effort
     }
 
-    // Step 4: Start OpenClaw gateway
+    // Step 4: Register MCP server with OpenClaw
+    try {
+      const stateDir = process.env.OPENCLAW_STATE_DIR || "/data/.openclaw";
+      const hlKey = process.env.HL_PRIVATE_KEY || "";
+      const hlTestnet = process.env.HL_TESTNET || "true";
+      execSync(
+        `openclaw mcp add nunchi_trading --command "python3 -m cli.main mcp serve" --cwd /agent-cli --env HL_PRIVATE_KEY=${hlKey} --env HL_TESTNET=${hlTestnet}`,
+        { timeout: 30000, stdio: "pipe", env: { ...process.env, OPENCLAW_STATE_DIR: stateDir } }
+      );
+      console.log("[server] MCP server registered");
+    } catch (err) {
+      console.warn("[server] MCP registration failed (may already exist):", err.message);
+    }
+
+    // Step 5: Start OpenClaw gateway
     startGateway();
     await waitForGatewayReady();
     console.log("[server] OpenClaw gateway is ready");
