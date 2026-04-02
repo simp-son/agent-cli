@@ -240,7 +240,19 @@ const server = app.listen(PORT, async () => {
     // Step 2: Auto-onboard if credentials present
     await autoOnboard();
 
-    // Step 3: Start OpenClaw gateway
+    // Step 3: Run doctor fix to clean up any invalid config keys
+    try {
+      execSync("openclaw doctor --fix", {
+        timeout: 30000,
+        stdio: "pipe",
+        env: { ...process.env, OPENCLAW_STATE_DIR: process.env.OPENCLAW_STATE_DIR || "/data/.openclaw" },
+      });
+      console.log("[server] OpenClaw doctor fix applied");
+    } catch {
+      // best-effort
+    }
+
+    // Step 4: Start OpenClaw gateway
     startGateway();
     await waitForGatewayReady();
     console.log("[server] OpenClaw gateway is ready");

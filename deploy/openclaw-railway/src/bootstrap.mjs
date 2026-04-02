@@ -85,38 +85,40 @@ function buildConfig() {
     : aiKey;
 
   const config = {
-    // Security (headless deployment)
-    deviceAuth: false,
-    insecureAuth: true,
-
-    // Agent settings
-    agentConcurrency: 10,
-    subagentConcurrency: 12,
-
-    // AI provider
-    provider: providerInfo.provider,
-    [providerInfo.key]: credentialValue,
-
-    // MCP servers — our trading CLI is the primary tool provider
-    mcpServers: {
-      nunchi_trading: {
-        command: "python3",
-        args: ["-m", "cli.main", "mcp", "serve"],
-        cwd: "/agent-cli",
-        env: {
-          HL_PRIVATE_KEY: process.env.HL_PRIVATE_KEY || "",
-          HL_TESTNET: process.env.HL_TESTNET || "true",
-          ...(isBlockrun ? {
-            BLOCKRUN_WALLET_KEY: process.env.BLOCKRUN_WALLET_KEY || "",
-            BLOCKRUN_PROXY_PORT: process.env.BLOCKRUN_PROXY_PORT || "8402",
-          } : {}),
+    auth: {
+      profiles: {
+        "primary": {
+          provider: providerInfo.provider,
+          [providerInfo.key]: credentialValue,
         },
       },
     },
-
-    // Workspace
-    workspaceDir: WORKSPACE_DIR,
-    stateDir: STATE_DIR,
+    agents: {
+      defaults: {
+        maxConcurrent: 10,
+        subagents: { maxConcurrent: 12 },
+      },
+    },
+    mcp: {
+      servers: {
+        nunchi_trading: {
+          command: "python3",
+          args: ["-m", "cli.main", "mcp", "serve"],
+          cwd: "/agent-cli",
+          env: {
+            HL_PRIVATE_KEY: process.env.HL_PRIVATE_KEY || "",
+            HL_TESTNET: process.env.HL_TESTNET || "true",
+            ...(isBlockrun ? {
+              BLOCKRUN_WALLET_KEY: process.env.BLOCKRUN_WALLET_KEY || "",
+              BLOCKRUN_PROXY_PORT: process.env.BLOCKRUN_PROXY_PORT || "8402",
+            } : {}),
+          },
+        },
+      },
+    },
+    workspace: {
+      dir: WORKSPACE_DIR,
+    },
   };
 
   // Telegram integration
@@ -124,9 +126,6 @@ function buildConfig() {
     config.channels = {
       telegram: {
         botToken: process.env.TELEGRAM_BOT_TOKEN,
-        allowedUsers: process.env.TELEGRAM_USERNAME
-          ? [process.env.TELEGRAM_USERNAME.replace("@", "")]
-          : [],
       },
     };
   }
