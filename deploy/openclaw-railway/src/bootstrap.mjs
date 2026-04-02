@@ -84,40 +84,22 @@ function buildConfig() {
     ? (process.env.BLOCKRUN_WALLET_KEY || "")
     : aiKey;
 
+  const profileName = `${providerInfo.provider}:auto`;
+
   const config = {
-    auth: {
-      profiles: {
-        "primary": {
-          provider: providerInfo.provider,
-          [providerInfo.key]: credentialValue,
-        },
-      },
-    },
     agents: {
       defaults: {
         maxConcurrent: 10,
         subagents: { maxConcurrent: 12 },
       },
     },
-    mcp: {
-      servers: {
-        nunchi_trading: {
-          command: "python3",
-          args: ["-m", "cli.main", "mcp", "serve"],
-          cwd: "/agent-cli",
-          env: {
-            HL_PRIVATE_KEY: process.env.HL_PRIVATE_KEY || "",
-            HL_TESTNET: process.env.HL_TESTNET || "true",
-            ...(isBlockrun ? {
-              BLOCKRUN_WALLET_KEY: process.env.BLOCKRUN_WALLET_KEY || "",
-              BLOCKRUN_PROXY_PORT: process.env.BLOCKRUN_PROXY_PORT || "8402",
-            } : {}),
-          },
+    auth: {
+      profiles: {
+        [profileName]: {
+          provider: providerInfo.provider,
+          mode: "token",
         },
       },
-    },
-    workspace: {
-      dir: WORKSPACE_DIR,
     },
   };
 

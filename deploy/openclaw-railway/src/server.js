@@ -234,6 +234,15 @@ const server = app.listen(PORT, async () => {
   console.log(`[server] Listening on :${PORT}`);
 
   try {
+    // Step 0: Wipe stale openclaw config so bootstrap regenerates it cleanly
+    const configPath = `${process.env.OPENCLAW_STATE_DIR || "/data/.openclaw"}/openclaw.json`;
+    try {
+      fs.unlinkSync(configPath);
+      console.log("[server] Cleared stale openclaw.json");
+    } catch {
+      // file may not exist yet
+    }
+
     // Step 1: Bootstrap (create dirs, sync workspace, generate configs)
     await bootstrap();
 
