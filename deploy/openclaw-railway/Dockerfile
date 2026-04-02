@@ -60,18 +60,18 @@ RUN mv /usr/bin/rg /usr/bin/rg-real \
 
 # Install agent-cli (our trading CLI)
 WORKDIR /agent-cli
-COPY ../../ .
+COPY . .
 RUN pip install --no-cache-dir --break-system-packages -e ".[mcp]"
 
 # Wrapper app
 WORKDIR /app
-COPY package.json ./
+COPY deploy/openclaw-railway/package.json ./
 RUN npm install --production
 
-COPY src ./src
+COPY deploy/openclaw-railway/src ./src
 
 # Workspace defaults (copied to volume at runtime)
-COPY workspace /opt/workspace-defaults
+COPY deploy/openclaw-railway/workspace /opt/workspace-defaults
 
 # Vendor mcporter skill
 RUN set -eux; \
