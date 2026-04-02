@@ -94,7 +94,8 @@ hl apex run --mainnet                                   # APEX multi-slot
 | `HL_TESTNET` | No | `true` (default) or `false` for mainnet |
 | `BUILDER_ADDRESS` | No | Override builder fee address (default: hardcoded) |
 | `BUILDER_FEE_TENTHS_BPS` | No | Override fee rate (default: 100 = 10 bps) |
-| `ANTHROPIC_API_KEY` | No | For `claude_agent` strategy |
+| `ANTHROPIC_API_KEY` | No | For `claude_agent` strategy (API key) |
+| `ANTHROPIC_SESSION_TOKEN` | No | For `claude_agent` strategy (Claude Max session token) |
 | `GEMINI_API_KEY` | No | For `claude_agent` with Gemini |
 
 \* Either `HL_PRIVATE_KEY` or a keystore with `HL_KEYSTORE_PASSWORD` is required.

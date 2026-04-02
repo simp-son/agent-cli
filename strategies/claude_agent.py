@@ -9,7 +9,11 @@ Usage:
     hl run claude_agent --mock --max-ticks 5 --tick 15
     hl run claude_agent -i ETH-PERP --tick 15
 
-    # Claude
+    # Claude (with API key)
+    hl run claude_agent -i ETH-PERP --tick 15 --model claude-haiku-4-5-20251001
+
+    # Claude Max (with session token)
+    export ANTHROPIC_SESSION_TOKEN=your_session_token_here
     hl run claude_agent -i ETH-PERP --tick 15 --model claude-haiku-4-5-20251001
 
     # Gemini Flash
@@ -171,10 +175,23 @@ class ClaudeStrategy(BaseStrategy):
                 raise ImportError(
                     "anthropic package required. Install: pip3 install anthropic"
                 )
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
-            if not api_key:
-                raise ValueError("ANTHROPIC_API_KEY environment variable required")
-            self._anthropic_client = anthropic.Anthropic(api_key=api_key)
+            
+            # Try session token first (for Claude Max), then API key
+            auth_token = os.environ.get("ANTHROPIC_SESSION_TOKEN") or os.environ.get("ANTHROPIC_API_KEY")
+            if not auth_token:
+                raise ValueError("ANTHROPIC_SESSION_TOKEN or ANTHROPIC_API_KEY environment variable required")
+            
+            # For session tokens, we need to use a different approach
+            if os.environ.get("ANTHROPIC_SESSION_TOKEN"):
+                # Session tokens are used differently - they might need custom headers or different endpoint
+                # This is a simplified approach - you may need to adjust based on Claude Max's auth method
+                self._anthropic_client = anthropic.Anthropic(
+                    api_key=auth_token,
+                    # Add any additional configuration needed for session tokens
+                )
+            else:
+                # Standard API key authentication
+                self._anthropic_client = anthropic.Anthropic(api_key=auth_token)
         return self._anthropic_client
 
     def _get_gemini_client(self):

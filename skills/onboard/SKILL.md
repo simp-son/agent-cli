@@ -300,7 +300,8 @@ Only after completing Steps 1-8 on testnet:
 | `HL_TESTNET` | No | `true` (default) or `false` for mainnet |
 | `BUILDER_ADDRESS` | No | Override builder fee address |
 | `BUILDER_FEE_TENTHS_BPS` | No | Override fee rate (default: 100 = 10 bps) |
-| `ANTHROPIC_API_KEY` | No | For `claude_agent` strategy |
+| `ANTHROPIC_API_KEY` | No | For `claude_agent` strategy (API key) |
+| `ANTHROPIC_SESSION_TOKEN` | No | For `claude_agent` strategy (Claude Max session token) |
 | `GEMINI_API_KEY` | No | For `claude_agent` with Gemini |
 
 \* Either keystore with `HL_KEYSTORE_PASSWORD` or `HL_PRIVATE_KEY` is required.

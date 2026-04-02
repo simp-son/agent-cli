@@ -137,7 +137,7 @@ Market Data -> Composite Fair Value -> Dynamic Spread -> Inventory Skew -> Multi
 | Provider | Models | Env Variable |
 |----------|--------|-------------|
 | Google Gemini | `gemini-2.0-flash` (default), `gemini-2.5-pro` | `GEMINI_API_KEY` |
-| Anthropic Claude | `claude-haiku-4-5-20251001`, `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` |
+| Anthropic Claude | `claude-haiku-4-5-20251001`, `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` or `ANTHROPIC_SESSION_TOKEN` |
 | OpenAI | `gpt-4o`, `gpt-4o-mini`, `o3-mini` | `OPENAI_API_KEY` |
 
 ---
@@ -648,7 +648,8 @@ hl run my_strategies.my_strategy:MyStrategy -i ETH-PERP --tick 10
 | `HL_TESTNET` | No | `true` (default) or `false` for mainnet |
 | `BUILDER_ADDRESS` | No | Override builder fee address |
 | `BUILDER_FEE_TENTHS_BPS` | No | Override fee rate (default: 100 = 10 bps) |
-| `ANTHROPIC_API_KEY` | No | For `claude_agent` with Claude |
+| `ANTHROPIC_API_KEY` | No | For `claude_agent` with Claude (API key) |
+| `ANTHROPIC_SESSION_TOKEN` | No | For `claude_agent` with Claude (Claude Max session token) |
 | `GEMINI_API_KEY` | No | For `claude_agent` with Gemini |
 | `OPENAI_API_KEY` | No | For `claude_agent` with OpenAI |
 

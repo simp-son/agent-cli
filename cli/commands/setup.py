@@ -59,10 +59,10 @@ def setup_check():
         ok_items.append("Builder fee: not configured (optional)")
 
     # 5. LLM key (for claude_agent)
-    if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("GEMINI_API_KEY"):
-        ok_items.append("LLM API key found")
+    if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_SESSION_TOKEN") or os.environ.get("GEMINI_API_KEY"):
+        ok_items.append("LLM API key/session token found")
     else:
-        ok_items.append("LLM API key: not set (only needed for claude_agent strategy)")
+        ok_items.append("LLM API key/session token: not set (only needed for claude_agent strategy)")
 
     # 6. Data directories
     data_dir = Path("data/cli")

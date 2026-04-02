@@ -272,7 +272,8 @@ class HLProxy:
         _patch_spot_meta_indexing()
 
         base_url = constants.TESTNET_API_URL if self.testnet else constants.MAINNET_API_URL
-        perp_dexs = [""] + list(HIP3_DEXS.keys())
+        # HIP-3 DEXs (e.g. yex) only exist on testnet
+        perp_dexs = [""] + (list(HIP3_DEXS.keys()) if self.testnet else [])
         self._info = Info(base_url, skip_ws=True, timeout=10, perp_dexs=perp_dexs)
 
         account = Account.from_key(self.private_key)
@@ -287,8 +288,8 @@ class HLProxy:
             self._exchange = Exchange(account, base_url, perp_dexs=perp_dexs)
             log.info("HL client initialized: %s (testnet=%s)", self._address, self.testnet)
 
-        # Enable HIP-3 DEX abstraction for agent trading
-        if HIP3_DEXS:
+        # Enable HIP-3 DEX abstraction for agent trading (testnet only)
+        if HIP3_DEXS and self.testnet:
             try:
                 self._exchange.agent_enable_dex_abstraction()
                 log.info("HIP-3 DEX abstraction enabled")

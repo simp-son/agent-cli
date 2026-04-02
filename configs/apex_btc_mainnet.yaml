@@ -1,0 +1,16 @@
+# APEX config — BTC-PERP only, mainnet, $50 account
+# Single parameter focus: radar_score_threshold
+
+# Instrument filter
+allowed_instruments:
+  - BTC-PERP
+
+# Entry threshold — the single parameter to tune
+radar_score_threshold: 170
+
+# Scaled for $50 account
+total_budget: 50.0
+max_slots: 1
+leverage: 5.0
+daily_loss_limit: 10.0
+guard_preset: tight
