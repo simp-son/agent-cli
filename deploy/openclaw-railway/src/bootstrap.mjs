@@ -23,6 +23,15 @@ const PROVIDER_MAP = {
   blockrun: { key: "blockrun-wallet-key", provider: "blockrun" },
 };
 
+function detectAuthMode(credentialValue, provider) {
+  // For Anthropic, check if it's an OAuth token (starts with sk-ant-oauth-)
+  // Otherwise assume API key authentication
+  if (provider === "anthropic" && credentialValue.startsWith("sk-ant-oauth-")) {
+    return "oauth";
+  }
+  return "token";
+}
+
 export async function bootstrap() {
   console.log("[bootstrap] Starting auto-configuration...");
 
@@ -48,7 +57,7 @@ export async function bootstrap() {
     }
   }
 
-  // 3. Generate openclaw.json with our MCP server
+  // 3. Generate openclaw.json with MCP server
   const config = buildConfig();
   writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
   console.log("[bootstrap] Generated openclaw.json");
@@ -85,6 +94,7 @@ function buildConfig() {
     : aiKey;
 
   const profileName = `${providerInfo.provider}:auto`;
+  const authMode = detectAuthMode(credentialValue, providerInfo.provider);
 
   const config = {
     gateway: {
@@ -100,7 +110,16 @@ function buildConfig() {
       profiles: {
         [profileName]: {
           provider: providerInfo.provider,
-          mode: "token",
+          mode: authMode,
+        },
+      },
+    },
+    tools: {
+      mcp: {
+        servers: {
+          "nunchi-trading": {
+            url: `http://127.0.0.1:${process.env.MCP_PORT || "18790"}/sse`,
+          },
         },
       },
     },

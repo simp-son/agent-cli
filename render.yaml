@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: nunchi-openclaw-agent
+    runtime: docker
+    dockerfilePath: ./deploy/openclaw-railway/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000  # Render uses 10000 by default
+      - key: HL_TESTNET
+        value: true
+      - key: APEX_PRESET
+        value: default
+      - key: RUN_MODE
+        value: apex
+      - key: INSTRUMENT
+        value: ETH-PERP
+      - key: DATA_DIR
+        value: /data
+      - key: OPENCLAW_STATE_DIR
+        value: /data/.openclaw
+      - key: OPENCLAW_WORKSPACE_DIR
+        value: /data/workspace
+      - key: INTERNAL_GATEWAY_HOST
+        value: 127.0.0.1
+      - key: INTERNAL_GATEWAY_PORT
+        value: 18789
+      - key: MCP_PORT
+        value: 18790
+      - key: AI_PROVIDER
+        value: anthropic
+      - key: NODE_ENV
+        value: production
+      # Required secrets (set these in Render dashboard)
+      - key: HL_PRIVATE_KEY
+        sync: false  # This will be set as a secret
+      - key: AI_API_KEY
+        sync: false  # API key or OAuth token (for Claude: sk-ant-* or sk-ant-oauth-*)
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false  # Optional, for Telegram integration
+    disk:
+      name: nunchi-data
+      mountPath: /data
+      sizeGB: 10

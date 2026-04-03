@@ -10,6 +10,7 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
+const { spawn } = require("child_process");
 const httpProxy = require("http-proxy");
 const { bootstrap } = require("./bootstrap.mjs");
 const { startGateway, waitForGatewayReady, getGatewayProcess } = require("./gateway");
@@ -20,9 +21,48 @@ const app = express();
 const PORT = parseInt(process.env.PORT || "8080", 10);
 const GATEWAY_HOST = process.env.INTERNAL_GATEWAY_HOST || "127.0.0.1";
 const GATEWAY_PORT = parseInt(process.env.INTERNAL_GATEWAY_PORT || "18789", 10);
+const MCP_PORT = parseInt(process.env.MCP_PORT || "18790", 10);
 const START_TIME = Date.now();
 const AGENT_CLI_DIR = "/agent-cli";
 const DATA_DIR = process.env.DATA_DIR || "/data";
+
+let mcpProcess = null;
+
+function startMCPServer() {
+  if (mcpProcess && !mcpProcess.killed) {
+    console.log("[mcp] Already running (pid=%d)", mcpProcess.pid);
+    return;
+  }
+
+  console.log("[mcp] Starting MCP server...");
+
+  mcpProcess = spawn("python3", ["-m", "cli.main", "mcp", "serve", "--transport", "sse", "--port", String(MCP_PORT)], {
+    cwd: AGENT_CLI_DIR,
+    env: {
+      ...process.env,
+      MCP_PORT: String(MCP_PORT),
+      PYTHONPATH: AGENT_CLI_DIR,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  mcpProcess.stdout.on("data", (data) => {
+    const line = data.toString().trim();
+    if (line) console.log(`[mcp] ${line}`);
+  });
+
+  mcpProcess.stderr.on("data", (data) => {
+    const line = data.toString().trim();
+    if (line) console.error(`[mcp] ${line}`);
+  });
+
+  mcpProcess.on("exit", (code, signal) => {
+    console.log(`[mcp] Exited (code=${code}, signal=${signal})`);
+    mcpProcess = null;
+  });
+
+  console.log("[mcp] Spawned (pid=%d)", mcpProcess.pid);
+}
 
 // Proxy to OpenClaw gateway
 const proxy = httpProxy.createProxyServer({
@@ -46,6 +86,8 @@ app.get("/health", (req, res) => {
     uptime_s: Math.floor((Date.now() - START_TIME) / 1000),
     gateway_alive: gw ? !gw.killed : false,
     gateway_pid: gw ? gw.pid : null,
+    mcp_alive: mcpProcess ? !mcpProcess.killed : false,
+    mcp_pid: mcpProcess ? mcpProcess.pid : null,
   });
 });
 
@@ -249,7 +291,10 @@ const server = app.listen(PORT, async () => {
     // Step 2: Bootstrap after onboard so our config is the final one
     await bootstrap();
 
-    // Step 3: Run doctor fix to clean up any invalid config keys
+    // Step 3: Start MCP server
+    startMCPServer();
+
+    // Step 4: Run doctor fix to clean up any invalid config keys
     try {
       execSync("openclaw doctor --fix", {
         timeout: 30000,
@@ -261,7 +306,7 @@ const server = app.listen(PORT, async () => {
       // best-effort
     }
 
-    // Step 4: Start OpenClaw gateway
+    // Step 5: Start OpenClaw gateway
     startGateway();
     await waitForGatewayReady();
     console.log("[server] OpenClaw gateway is ready");
@@ -284,6 +329,12 @@ function shutdown(signal) {
     setTimeout(() => {
       if (!gw.killed) gw.kill("SIGKILL");
     }, 10000);
+  }
+  if (mcpProcess && !mcpProcess.killed) {
+    mcpProcess.kill("SIGTERM");
+    setTimeout(() => {
+      if (!mcpProcess.killed) mcpProcess.kill("SIGKILL");
+    }, 5000);
   }
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 15000);
