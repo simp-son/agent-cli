@@ -261,21 +261,7 @@ const server = app.listen(PORT, async () => {
       // best-effort
     }
 
-    // Step 4: Register MCP server with OpenClaw
-    try {
-      const stateDir = process.env.OPENCLAW_STATE_DIR || "/data/.openclaw";
-      const hlKey = process.env.HL_PRIVATE_KEY || "";
-      const hlTestnet = process.env.HL_TESTNET || "true";
-      execSync(
-        `openclaw mcp add nunchi_trading --command "python3 -m cli.main mcp serve" --cwd /agent-cli --env HL_PRIVATE_KEY=${hlKey} --env HL_TESTNET=${hlTestnet}`,
-        { timeout: 30000, stdio: "pipe", env: { ...process.env, OPENCLAW_STATE_DIR: stateDir } }
-      );
-      console.log("[server] MCP server registered");
-    } catch (err) {
-      console.warn("[server] MCP registration failed (may already exist):", err.message);
-    }
-
-    // Step 5: Start OpenClaw gateway
+    // Step 4: Start OpenClaw gateway
     startGateway();
     await waitForGatewayReady();
     console.log("[server] OpenClaw gateway is ready");

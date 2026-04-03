@@ -87,6 +87,9 @@ function buildConfig() {
   const profileName = `${providerInfo.provider}:auto`;
 
   const config = {
+    gateway: {
+      mode: "local",
+    },
     agents: {
       defaults: {
         maxConcurrent: 10,
