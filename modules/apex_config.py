@@ -17,12 +17,12 @@ class ApexConfig:
     margin_per_slot: float = 0.0  # auto-computed
 
     # Entry thresholds
-    radar_score_threshold: int = 170
+    radar_score_threshold: int = 160
     pulse_immediate_auto_entry: bool = True
     pulse_confidence_threshold: float = 70.0
 
     # Exit parameters
-    conviction_collapse_minutes: int = 30
+    conviction_collapse_minutes: int = 45
     stagnation_minutes: int = 60
     stagnation_min_roe: float = 3.0
     max_negative_roe: float = -5.0
@@ -46,7 +46,7 @@ class ApexConfig:
 
     # Tick schedule
     tick_interval_s: float = 60.0
-    radar_interval_ticks: int = 15
+    radar_interval_ticks: int = 10
     watchdog_interval_ticks: int = 5
 
     # REFLECT self-improvement
