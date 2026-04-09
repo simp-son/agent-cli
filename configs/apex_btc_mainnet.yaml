@@ -11,7 +11,7 @@ radar_score_threshold: 160
 # Scaled for $50 account
 total_budget: 50.0
 max_slots: 1
-leverage: 5.0
+leverage: 10.0
 daily_loss_limit: 10.0
 guard_preset: tight
 slot_cooldown_ms: 7200000  # 2 hours — prevents fee churn on re-entry
