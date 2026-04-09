@@ -28,7 +28,7 @@ class ApexConfig:
     max_negative_roe: float = -5.0
 
     # Rotation cooldown
-    min_hold_ms: int = 2_700_000       # 45 min — blocks conviction/stagnation exits
+    min_hold_ms: int = 900_000          # 15 min — blocks conviction/stagnation exits
     slot_cooldown_ms: int = 300_000    # 5 min — prevents slot reuse after close
 
     # Risk
